@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PCL-JEPA · view-independent 3D encoder · Hack the World(s)</title>
+<style>
+  :root {
+  --bg: #eef1f4;
+  --panel: #ffffff;
+  --ink: #161c2b;
+  --muted: #5d6b7e;
+  --line: #d7dde4;
+  --pt: #2b6fb3;
+  --accent: #4f46c4;
+  --accent-soft: rgba(79,70,196,0.10);
+  --signal: #e8632a;
+  --good: #128a6b;
+  --warn: #b3592b;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --magenta: #9c1f63;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--mono); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 32px 24px 60px; }
+/* ---- hero header ---- */
+.hero { border-bottom: 1px solid var(--line); padding-bottom: 22px;
+  margin-bottom: 26px; }
+.hero-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+.brand .logo-mark { display: inline-flex; align-items: baseline; gap: 1px;
+  font-weight: 700; font-size: 18px; letter-spacing: -0.02em;
+  background: var(--ink); color: #fff; padding: 6px 10px; border-radius: 6px; }
+.brand .logo-mark .s { color: var(--signal); }
+.brand .brand-meta { display: flex; flex-direction: column; gap: 1px; }
+.brand .brand-name { font-size: 12px; font-weight: 600; color: var(--ink);
+  letter-spacing: 0.01em; }
+.brand .brand-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.02em; }
+.event-badge { margin-left: auto; font-size: 10px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  background: var(--panel); letter-spacing: 0.04em; white-space: nowrap; }
+.event-badge b { color: var(--accent); font-weight: 600; }
+
+.hero h1.title { font-size: 26px; line-height: 1.18; font-weight: 700;
+  letter-spacing: -0.01em; margin: 0 0 6px; padding-left: 0; max-width: 90ch; }
+.hero h1.title::before { display: none; }
+.hero h1.title .accent { color: var(--accent); }
+.hero .tagline { font-size: 13px; color: var(--ink); font-weight: 600;
+  margin: 0 0 14px; letter-spacing: 0.01em; }
+.hero .tagline .em { color: var(--signal); }
+.hero .intro { font-size: 12.5px; color: var(--muted); line-height: 1.65;
+  max-width: 140ch; margin: 0; }
+.hero .intro strong { color: var(--ink); font-weight: 600; }
+.hero .intro .belief { color: var(--ink); }
+.hero .meta-line { font-size: 11px; color: var(--muted); margin: 14px 0 0;
+  display: flex; gap: 10px 18px; flex-wrap: wrap; letter-spacing: 0.02em; }
+.hero .meta-line span b { color: var(--ink); font-weight: 600; }
+
+h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; margin: 0;
+  position: relative; padding-left: 14px; }
+h1::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px;
+  width: 3px; border-radius: 2px; background: var(--accent); }
+h1 .dim { color: var(--muted); font-weight: 400; }
+.sub { color: var(--muted); font-size: 12px; max-width: 48ch; line-height: 1.5; }
+.classbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+.chip { font-family: var(--mono); font-size: 11px; cursor: pointer;
+  background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 4px; padding: 5px 11px; transition: all .12s; }
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.stage { display: grid; grid-template-columns: 1fr 2fr; gap: 22px; align-items: stretch; }
+@media (max-width: 980px) { .stage { grid-template-columns: 1fr; } }
+.stage > .panel { display: flex; flex-direction: column; }
+.stage > .panel #cloud { width: 100%; height: auto; margin: auto 0; }
+.panel { background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px; }
+.panel h2 { font-size: 11px; font-weight: 600; letter-spacing: 0.10em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 12px;
+  display: flex; justify-content: space-between; align-items: baseline; }
+.panel h2 .hint { font-weight: 400; text-transform: none; letter-spacing: 0;
+  color: var(--muted); font-size: 10px; }
+canvas { display: block; width: 100%; height: auto; border-radius: 4px;
+  background: #f6f8fa; border: 1px solid var(--line); }
+.embeds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 620px) { .embeds { grid-template-columns: 1fr; } }
+.emb-col { background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px; }
+.emb-head { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 10px; }
+.emb-head .name { font-size: 12px; font-weight: 600; letter-spacing: 0.03em; }
+.emb-head .name.jepa { color: var(--accent); }
+.emb-head .name.pointnet { color: var(--warn); }
+.emb-head .loaded { font-size: 9px; color: var(--muted); }
+.emb-sub { font-size: 9px; color: var(--muted); margin: 0 0 8px; }
+.col-readout { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap;
+  padding-top: 12px; border-top: 1px solid var(--line); }
+.stat { display: flex; flex-direction: column; gap: 3px; }
+.stat .v { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .v.good { color: var(--good); }
+.stat .v.warn { color: var(--warn); }
+.stat .k { font-size: 9px; color: var(--muted); letter-spacing: 0.06em;
+  text-transform: uppercase; }
+.controls { margin-top: 22px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+.row { display: flex; align-items: center; gap: 16px; }
+.row + .row { margin-top: 16px; }
+label.sl { font-size: 11px; color: var(--muted); min-width: 110px; letter-spacing: 0.04em; }
+input[type=range] { -webkit-appearance: none; appearance: none; flex: 1;
+  height: 3px; border-radius: 3px; background: var(--line); outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 2px; background: var(--accent);
+  cursor: pointer; border: 3px solid var(--panel); box-shadow: 0 0 0 1px var(--line); }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px;
+  border-radius: 2px; background: var(--accent); cursor: pointer; border: 3px solid var(--panel); }
+.angle-label { font-size: 13px; min-width: 110px; }
+.angle-label b { color: var(--signal); }
+.scaleval { font-size: 12px; color: var(--muted); min-width: 54px; text-align: right; }
+button { font-family: var(--mono); font-size: 12px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 4px; padding: 9px 14px; letter-spacing: 0.03em;
+  transition: border-color .15s, background .15s, color .15s; }
+button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary { border-color: var(--accent); color: var(--accent); }
+button.spinning { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* the two control cards stack with a gap */
+/* segmented buttons row, just under the image stage */
+.seg-row { margin-top: 4px; display: flex; justify-content: flex-start; }
+.sliders-card { margin-top: 16px; }
+.actions-card { margin-top: 16px; }
+
+/* segmented "apple-like" button group: one pill, divided into 3 cells */
+.segmented { display: inline-flex; align-items: stretch;
+  background: #e9edf2; border: 1px solid var(--line);
+  border-radius: 10px; padding: 3px; gap: 3px;
+  box-shadow: inset 0 1px 2px rgba(22,28,43,0.04); }
+.segmented .seg-btn { border: none; background: transparent; color: var(--muted);
+  font-size: 12px; letter-spacing: 0.02em; padding: 8px 16px; border-radius: 7px;
+  cursor: pointer; transition: background .18s ease, color .18s ease,
+  box-shadow .18s ease, transform .05s ease; white-space: nowrap; }
+.segmented .seg-btn:hover { color: var(--ink); }
+.segmented .seg-btn:active { transform: scale(0.97); }
+.segmented .seg-btn:focus-visible { outline: 2px solid var(--accent);
+  outline-offset: 1px; }
+/* active/selected cell floats up like an iOS segmented control */
+.segmented .seg-btn.on { background: var(--panel); color: var(--accent);
+  box-shadow: 0 1px 2px rgba(22,28,43,0.12), 0 0 0 0.5px rgba(22,28,43,0.04); }
+
+.loaders { display: flex; gap: 24px; flex-wrap: wrap; }
+.loader { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 5px; }
+.loader b.jepa { color: var(--accent); }
+.loader b.pointnet { color: var(--warn); }
+.note { color: var(--muted); font-size: 11.5px; line-height: 1.6; margin-top: 18px; }
+code { background: #e9edf2; padding: 1px 5px; border-radius: 3px; }
+
+/* ---- About / team section (coherent with demo: mono, tight, bordered) ---- */
+.about { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 24px;
+  font-family: var(--mono); }
+.about .about-head { margin-bottom: 16px; }
+.about .head-row { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; }
+.about .about-head h2 { font-size: 17px; font-weight: 600; letter-spacing: 0.02em;
+  margin: 0; position: relative; padding-left: 14px; }
+.about .about-head h2::before { content: ""; position: absolute; left: 0; top: 2px;
+  bottom: 2px; width: 3px; border-radius: 2px; background: var(--accent); }
+.about .about-head h2 .team { color: var(--magenta); }
+.about .about-head .kicker { font-size: 11px; color: var(--muted); margin: 6px 0 0;
+  padding-left: 14px; letter-spacing: 0.04em; }
+.about .uni-logo { display: flex; align-items: center; gap: 10px; }
+.about .uni-logo img { height: 34px; width: auto; object-fit: contain; }
+.about .uni-logo .uni-fallback { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.03em; }
+.about .uni-line { font-size: 11px; color: var(--muted); margin: 12px 0 0; padding-left: 14px;
+  line-height: 1.5; letter-spacing: 0.02em; }
+.about .uni-line b { color: var(--ink); font-weight: 600; }
+.about .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 980px) { .about .team-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .about .team-grid { grid-template-columns: 1fr; } }
+.about .member { background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px 14px; text-align: center; display: flex;
+  flex-direction: column; align-items: center; }
+.about .avatar { width: 84px; height: 84px; border-radius: 50%; object-fit: cover;
+  border: 2px solid #eef1f8; box-shadow: 0 0 0 1px var(--line); background: #e9edf2;
+  margin-bottom: 10px; }
+.about .member .name { font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 0.02em; }
+.about .member .name .lead { color: var(--magenta); }
+.about .member .name .star { color: var(--ink); }
+.about .member .divider { height: 1px; width: 70%; background: var(--line); margin: 9px 0 11px; }
+.about .member .affil { font-size: 11px; font-weight: 600; line-height: 1.45; margin: 0; color: var(--ink); }
+.about .member .role { font-size: 11px; font-weight: 600; line-height: 1.45; margin: 0; color: var(--ink); }
+.about .logo-slot { height: 30px; display: flex; align-items: center; justify-content: center;
+  margin: 9px 0; width: 100%; }
+.about .logo-slot img { max-height: 26px; max-width: 78%; object-fit: contain; }
+.about .logo-slot img.icon { max-height: 22px; opacity: 0.82; }
+.about .logo-slot img.wordmark { max-height: 20px; max-width: 58%; }
+.about .logo-fallback { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+.about .footnote { text-align: center; margin-top: 16px; font-size: 10px; color: var(--muted); letter-spacing: 0.03em; }
+.about .footnote em { font-style: normal; }
+
+/* ---- results section ---- */
+.results { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 24px; }
+.results h2 { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; margin: 0 0 14px;
+  position: relative; padding-left: 14px; }
+.results h2::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px;
+  width: 3px; border-radius: 2px; background: var(--accent); }
+.results h2 .em { color: var(--signal); }
+.results .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .results .res-grid { grid-template-columns: 1fr; } }
+.results .res-card { background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 16px 18px; }
+.results .res-card .rc-head { font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
+.results .res-card p { font-size: 12px; line-height: 1.6; color: var(--ink); margin: 0; }
+.results .res-card p .muted { color: var(--muted); }
+.results .takeaway { margin-top: 16px; background: var(--accent-soft);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 6px; padding: 14px 16px; font-size: 12px; line-height: 1.65; color: var(--ink); }
+.results .takeaway b { color: var(--accent); font-weight: 600; }
+.results .takeaway .em { color: var(--signal); font-weight: 600; }
+
+/* ---- site footer · sponsors / partners ---- */
+.site-footer { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 22px;
+  font-family: var(--mono); }
+.site-footer .foot-head { font-size: 11px; font-weight: 600; letter-spacing: 0.10em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.site-footer .foot-head a { color: var(--accent); text-decoration: none; }
+.site-footer .foot-head a:hover { text-decoration: underline; }
+.site-footer .foot-group { margin-top: 16px; }
+.site-footer .foot-label { font-size: 10px; color: var(--muted); letter-spacing: 0.06em;
+  text-transform: uppercase; margin: 0 0 8px; }
+.site-footer .logo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; }
+.site-footer .logo-row a { display: inline-flex; align-items: center; height: 38px;
+  text-decoration: none; }
+.site-footer .logo-row img { max-height: 34px; max-width: 150px; object-fit: contain; }
+.site-footer .partner-fallback { font-size: 11px; font-weight: 700; color: var(--ink);
+  letter-spacing: 0.02em; }
+.site-footer .foot-bottom { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: 10px; color: var(--muted); letter-spacing: 0.02em; }
+.site-footer .foot-bottom a { color: var(--muted); text-decoration: none; }
+.site-footer .foot-bottom a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="hero-top">
+      <a class="brand" href="https://hacktheworlds.fr" target="_blank" rel="noopener">
+        <span class="logo-mark">HtW<span class="s">(s)</span></span>
+        <span class="brand-meta">
+          <span class="brand-name">Hack the World(s)</span>
+          <span class="brand-sub">Hackathon World Models · JEPA</span>
+        </span>
+      </a>
+      <span class="event-badge"><b>FAYR Team</b> · 19–20 June 2026</span>
+    </div>
+
+    <h1 class="title">PCL&#8209;JEPA <span class="accent">·</span> a <span class="accent">view-independent</span> 3D encoder</h1>
+    <p class="tagline">A joint&#8209;embedding predictive encoder whose
+      representation <span class="em">stays put</span> while the object rotates.</p>
+
+    <p class="intro">
+      This playground compares two point&#8209;cloud encoders on the same
+      <strong>rotating object</strong>: a rotation&#8209;invariant <strong>PCL&#8209;JEPA</strong>
+      embedding against a regular PointNet. 
+      <br><br>
+      <span class="belief">We believe a view&#8209;independent 3D encoder</strong>
+      is one of the key challenges to overcome for the scene understanding of
+      embodied agents</strong> equipped with 3D sensors.</span>
+    </p>
+
+    <p class="meta-line">
+      <span><b>Built</b> 19–20 June 2026</span>
+      <span><b>Where</b> ESIEE Paris · Noisy&#8209;le&#8209;Grand</span>
+      <span><b>By</b> Alexis Deseure--Charron · Robert Antaluca · Fadi Shafo · Yazan El-Mahmoud</span>
+    </p>
+  </header>
+
+  <div class="classbar" id="classbar"></div>
+
+  <div class="stage">
+    <div class="panel">
+      <h2><span>object · <span id="clsName">—</span></span><span class="hint">+ center frame</span></h2>
+      <canvas id="cloud" width="420" height="380"></canvas>
+    </div>
+    <div class="embeds">
+      <div class="emb-col">
+        <div class="emb-head">
+          <span class="name jepa">&#9670; rotation-invariant JEPA</span>
+          <span class="loaded" id="loadedA">no file</span>
+        </div>
+        <p class="emb-sub"><span id="pcaLabelA">PCA(2)</span> · drag to orbit (3D)</p>
+        <canvas id="pcaA" width="360" height="320"></canvas>
+        <div class="col-readout">
+          <div class="stat"><span class="v good" id="cosA">&mdash;</span><span class="k">cos(emb&#8348;, emb&#8320;)</span></div>
+          <div class="stat"><span class="v" id="driftA">&mdash;</span><span class="k">drift</span></div>
+          <div class="stat"><span class="v" id="dimA">&mdash;</span><span class="k">emb dim</span></div>
+          <div class="stat"><span class="v" id="varA">&mdash;</span><span class="k">var expl.</span></div>
+        </div>
+      </div>
+      <div class="emb-col">
+        <div class="emb-head">
+          <span class="name pointnet">&#9671; regular PointNet</span>
+          <span class="loaded" id="loadedB">no file</span>
+        </div>
+        <p class="emb-sub"><span id="pcaLabelB">PCA(2)</span> · drag to orbit (3D)</p>
+        <canvas id="pcaB" width="360" height="320"></canvas>
+        <div class="col-readout">
+          <div class="stat"><span class="v warn" id="cosB">&mdash;</span><span class="k">cos(emb&#8348;, emb&#8320;)</span></div>
+          <div class="stat"><span class="v" id="driftB">&mdash;</span><span class="k">drift</span></div>
+          <div class="stat"><span class="v" id="dimB">&mdash;</span><span class="k">emb dim</span></div>
+          <div class="stat"><span class="v" id="varB">&mdash;</span><span class="k">var expl.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- segmented (apple-like) buttons sit directly under the image panels -->
+  <div class="seg-row">
+    <div class="segmented" role="group" aria-label="view controls">
+      <button id="spinBtn" class="seg-btn">&#9654;&#xfe0e; spin</button>
+      <button id="modeBtn" class="seg-btn">&#11031;&#xfe0e; 3D</button>
+      <button id="refreshBtn" class="seg-btn">&#8635;&#xfe0e; random class</button>
+    </div>
+  </div>
+
+  <!-- sliders get their own card -->
+  <div class="controls sliders-card">
+    <div class="row">
+      <span class="angle-label">angle <b id="angVal">0&deg;</b></span>
+      <input type="range" id="slider" min="0" max="47" value="0" step="1" />
+    </div>
+    <div class="row">
+      <label class="sl" for="zoom">embedding zoom</label>
+      <input type="range" id="zoom" min="0.15" max="3" value="1" step="0.01" />
+      <span class="scaleval" id="zoomVal">1.0&times;</span>
+    </div>
+  </div>
+
+  <!-- file loaders (auto-load is used instead; manual inputs disabled) -->
+  <!--
+  <div class="controls actions-card">
+    <div class="loaders">
+      <span class="loader">load <b class="jepa">JEPA</b> embeddings (json):
+        <input type="file" id="fileA" accept=".json" /></span>
+      <span class="loader">load <b class="pointnet">PointNet</b> embeddings (json):
+        <input type="file" id="fileB" accept=".json" /></span>
+    </div>
+  </div>
+  -->
+  <!-- dataNote kept (script writes status here); hidden, no manual inputs -->
+  <p class="note" id="dataNote" style="display:none">Loading&hellip;</p>
+
+  <section class="results" id="results">
+    <h2>Results <span class="em">·</span> a view-independent embedding emerges</h2>
+    <p class="takeaway">
+      We observe <b>far less drift / movement</b> of an object's embedding as it
+      rotates: a <em>natural, view-independent embedding of the objects emerges</em>.
+         <br>    <br> Beyond per-object stability, a <em>natural clustering emerges in the embedding
+      space</em> &mdash; different shapes settle into distinct, well-separated regions
+      while every rotation of a given shape stays put within its own cluster.    <br>   <br>
+      In short, we successfully built an encoder where every rotation of one shape
+      maps to a single point (cosine &asymp; 1, near-zero drift), whereas a
+      pose-sensitive encoder smears that shape into a cloud as the angle changes.
+      <br>
+    </p>
+  </section>
+
+  <section class="about" id="about">
+  <div class="about-head">
+    <div class="head-row">
+      <div>
+        <h2>About us:</h2>
+      </div>
+      <div class="uni-logo">
+        <img src="logos/Logo_UTC_2018.svg-2.png"
+             alt="Universit&eacute; de Technologie de Compi&egrave;gne"
+             onerror="this.outerHTML='<span class=&quot;uni-fallback&quot;>UTC &middot; Alliance Sorbonne Universit&eacute;</span>'">
+      </div>
+    </div>
+    <p class="uni-line">We are all students at the <b>Universit&eacute; de Technologie de Compi&egrave;gne (UTC)</b>,
+      part of the Alliance Sorbonne Universit&eacute;.</p>
+  </div>
+
+  <div class="team-grid">
+    <!-- ALEXIS -->
+    <article class="member">
+      <img class="avatar" src="alexis.png" alt="Alexis" onerror="this.style.visibility='hidden'">
+      <h3 class="name"><span class="lead">A</span>lexis<span class="star">*</span></h3>
+      <div class="divider"></div>
+      <p class="affil">Georgia Institute of Technology</p>
+      <div class="logo-slot">
+        <img src="logos/Georgia-Tech-Logo.jpg" alt="Georgia Tech"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>GEORGIA TECH</span>'">
+      </div>
+      <p class="role">Machine Learning Engineer Intern</p>
+      <div class="logo-slot">
+        <img class="wordmark" src="logos/criteo-1.svg" alt="Criteo"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>CRITEO</span>'">
+      </div>
+    </article>
+
+    <!-- ROBERT -->
+    <article class="member">
+      <img class="avatar" src="robert.png" alt="Robert" onerror="this.style.visibility='hidden'">
+      <h3 class="name"><span class="lead">R</span>obert<span class="star">*</span></h3>
+      <div class="divider"></div>
+      <p class="affil">Incoming PhD, Inria</p>
+      <div class="logo-slot">
+        <img src="logos/Inr_logo_fr_rouge.png" alt="Inria"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>Inria</span>'">
+      </div>
+      <p class="role">Robotics &amp; AI Research Intern</p>
+      <div class="logo-slot">
+        <img src="logos/images-7.png" alt="CEA"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>CEA</span>'">
+      </div>
+    </article>
+
+    <!-- FADI -->
+    <article class="member">
+      <img class="avatar" src="fadi.png" alt="Fadi" onerror="this.style.visibility='hidden'">
+      <h3 class="name"><span class="lead">F</span>adi<span class="star">*</span></h3>
+      <div class="divider"></div>
+      <p class="affil">UTC &amp; Polit&egrave;cnica de Catalunya</p>
+      <div class="logo-slot">
+        <img src="logos/Logo_UPC.svg.png" alt="Universitat Polit&egrave;cnica de Catalunya"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>UPC BARCELONATECH</span>'">
+      </div>
+      <p class="role">AI Research Intern</p>
+      <div class="logo-slot">
+        <img src="logos/BNP_Paribas_logo.svg.png" alt="BNP Paribas"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>BNP PARIBAS</span>'">
+      </div>
+    </article>
+
+
+    <!-- YAZAN -->
+    <article class="member">
+      <img class="avatar" src="yazan.png" alt="Yazan" onerror="this.style.visibility='hidden'">
+      <h3 class="name"><span class="lead">Y</span>azan</h3>
+      <div class="divider"></div>
+      <p class="affil">Georgia Institute of Technology</p>
+      <div class="logo-slot">
+        <img src="logos/Georgia-Tech-Logo.jpg" alt="Georgia Tech"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>GEORGIA TECH</span>'">
+      </div>
+      <p class="role">Data Scientist Intern</p>
+      <div class="logo-slot">
+        <img class="icon" src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/amazon.svg" alt="Amazon"
+             onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>amazon</span>'">
+      </div>
+    </article>
+  </div>
+
+    <p class="footnote"><em>*main authors, equal contributions</em></p>
+  </section>
+
+  <footer class="site-footer">
+    <p class="foot-head">Built for <a href="https://hacktheworlds.fr" target="_blank" rel="noopener">Hack the World(s)</a> &middot; Hackathon World Models &middot; 19&ndash;20 June 2026</p>
+
+    <div class="foot-group">
+      <p class="foot-label">Organised by</p>
+      <div class="logo-row">
+        <a href="https://www.esiee.fr" target="_blank" rel="noopener">
+          <img src="https://hacktheworlds.fr/img/logos/logo-esiee.png" alt="ESIEE Paris"
+               onerror="this.outerHTML='<span class=&quot;partner-fallback&quot;>ESIEE Paris</span>'">
+        </a>
+        <a href="https://mines-nancy.univ-lorraine.fr" target="_blank" rel="noopener">
+          <img src="https://hacktheworlds.fr/img/logos/logo-mines-nancy.png" alt="Mines Nancy"
+               onerror="this.outerHTML='<span class=&quot;partner-fallback&quot;>Mines Nancy</span>'">
+        </a>
+        <a href="https://www.prairie-psai.fr" target="_blank" rel="noopener">
+          <img src="https://hacktheworlds.fr/img/logos/logo-prairie.png" alt="PR[AI]RIE"
+               onerror="this.outerHTML='<span class=&quot;partner-fallback&quot;>PR[AI]RIE</span>'">
+        </a>
+      </div>
+    </div>
+
+    <div class="foot-group">
+      <p class="foot-label">In partnership with</p>
+      <div class="logo-row">
+        <a href="https://acadi.asso.fr" target="_blank" rel="noopener">
+          <img src="https://hacktheworlds.fr/img/logos/logo-acadi.png" alt="ACADI"
+               onerror="this.outerHTML='<span class=&quot;partner-fallback&quot;>ACADI</span>'">
+        </a>
+      </div>
+    </div>
+
+    <div class="foot-group">
+      <p class="foot-label">Powered by</p>
+      <div class="logo-row">
+        <a href="https://aifactory-france.eu" target="_blank" rel="noopener">
+          <img src="https://hacktheworlds.fr/img/logo-ai2f.png" alt="AI Factory France"
+               onerror="this.outerHTML='<span class=&quot;partner-fallback&quot;>AI Factory France</span>'">
+        </a>
+      </div>
+    </div>
+
+    <div class="foot-group">
+      <p class="foot-label">Under the patronage of &middot; with the sponsorship of</p>
+      <div class="logo-row">
+        <span class="partner-fallback">Philippe Baptiste &mdash; Minist&egrave;re de l'Enseignement sup&eacute;rieur, de la Recherche et de l'Espace</span>
+        <span class="partner-fallback">Yann Le&nbsp;Cun &mdash; Turing Award</span>
+      </div>
+    </div>
+
+    <div class="foot-bottom">
+      <span>&copy; 2026 Hack the World(s) &mdash; FAYR Team project. Logos belong to their respective owners.</span>
+      <span><a href="https://hacktheworlds.fr" target="_blank" rel="noopener">hacktheworlds.fr</a></span>
+    </div>
+  </footer>
+</div>
+
+<script>
+const MODELS = {
+  A: { key:'A', data:null, yaw:0.6, pitch:0.5, pv:null,
+       pca:'pcaA', cosEl:'cosA', driftEl:'driftA',
+       dimEl:'dimA', varEl:'varA', loadedEl:'loadedA', pcaLabelEl:'pcaLabelA' },
+  B: { key:'B', data:null, yaw:0.6, pitch:0.5, pv:null,
+       pca:'pcaB', cosEl:'cosB', driftEl:'driftB',
+       dimEl:'dimB', varEl:'varB', loadedEl:'loadedB', pcaLabelEl:'pcaLabelB' }
+};
+let CLS = 0, ZOOM = 1, MODE = '2D';
+const dataNote = document.getElementById('dataNote');
+const cloud = document.getElementById('cloud'), cctx = cloud.getContext('2d');
+function refData(){ return MODELS.A.data || MODELS.B.data; }
+
+function project(p) {
+  const a = 0.5, e = 0.55;
+  const x = p[0]*Math.cos(a) - p[1]*Math.sin(a);
+  const y = (p[0]*Math.sin(a) + p[1]*Math.cos(a))*Math.sin(e) - p[2]*Math.cos(e);
+  return [x, y];
+}
+function drawCloudFrame(W, H, scale) {
+  const cx = W/2, cy = H/2, L = 0.55;
+  const axes = [
+    { v:[L,0,0], col:'#e8632a', lbl:'x' },
+    { v:[0,L,0], col:'#128a6b', lbl:'y' },
+    { v:[0,0,L], col:'#4f46c4', lbl:'z' } ];
+  for (const a of axes) {
+    const pr = project(a.v);
+    const ex = cx + pr[0]*scale, ey = cy + pr[1]*scale;
+    cctx.strokeStyle = a.col; cctx.lineWidth = 2;
+    cctx.beginPath(); cctx.moveTo(cx,cy); cctx.lineTo(ex,ey); cctx.stroke();
+    cctx.fillStyle = a.col; cctx.font = '10px ui-monospace';
+    cctx.fillText(a.lbl, ex+2, ey-2);
+  }
+  cctx.fillStyle = '#161c2b';
+  cctx.beginPath(); cctx.arc(cx,cy,2.5,0,Math.PI*2); cctx.fill();
+}
+function drawCloud(frame) {
+  const d = refData(); if (!d) return;
+  const W = cloud.width, H = cloud.height;
+  cctx.clearRect(0,0,W,H);
+  const pts = d.classes[CLS].points[frame];
+  const proj = pts.map(p => { const pr=project(p);
+    return {px:pr[0],py:pr[1],depth:p[1]}; }).sort((a,b)=>a.depth-b.depth);
+  const scale = Math.min(W,H)*0.34;
+  for (const q of proj) {
+    const sx = W/2+q.px*scale, sy = H/2+q.py*scale;
+    const shade = 0.4 + 0.6*((q.depth+1)/2);
+    cctx.fillStyle = 'rgba(43,111,179,'+shade+')';
+    cctx.beginPath(); cctx.arc(sx,sy,1.7,0,Math.PI*2); cctx.fill();
+  }
+  drawCloudFrame(W, H, scale);
+}
+
+function classPts(M, cl) { return (MODE === '3D' && cl.pca3) ? cl.pca3 : cl.pca2; }
+function pcaView(M) {
+  const d = M.data; let mx=0,my=0,mz=0,n=0;
+  for (const c of d.classes) for (const p of classPts(M,c)) {
+    mx += p[0]; my += p[1]; mz += (p[2]||0); n++; }
+  mx/=n; my/=n; mz/=n;
+  const half = (d.global_radius || 1) * 1.25 / ZOOM;
+  return { cx: mx, cy: my, cz: mz, half };
+}
+function isoPCA(M, p) {
+  const PV = M.pv;
+  const x = (p[0]-PV.cx), y = (p[1]-PV.cy), z = (p[2]||0)-PV.cz;
+  const cy = Math.cos(M.yaw), sy = Math.sin(M.yaw);
+  const cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
+  const x1 = x*cy + z*sy, z1 = -x*sy + z*cy;
+  const y2 = y*cp - z1*sp, z2 = y*sp + z1*cp;
+  return [x1, y2, z2];
+}
+function drawPCAFrame(M, ctx, sx, sy) {
+  const PV = M.pv, cx = PV.cx, cy = PV.cy, cz = PV.cz, f = PV.half * 0.45;
+  const axes = MODE === '3D'
+    ? [ {v:[f,0,0],col:'#e8632a',lbl:'PC1'},{v:[0,f,0],col:'#128a6b',lbl:'PC2'},{v:[0,0,f],col:'#4f46c4',lbl:'PC3'} ]
+    : [ {v:[f,0,0],col:'#e8632a',lbl:'PC1'},{v:[0,f,0],col:'#128a6b',lbl:'PC2'} ];
+  const ox = sx([cx,cy,cz]), oy = sy([cx,cy,cz]);
+  for (const a of axes) {
+    const tip = [cx+a.v[0], cy+a.v[1], cz+a.v[2]];
+    const ex = sx(tip), ey = sy(tip);
+    ctx.strokeStyle = a.col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ex,ey); ctx.stroke();
+    ctx.fillStyle = a.col; ctx.font = '9px ui-monospace';
+    ctx.fillText(a.lbl, ex+2, ey-2);
+  }
+  ctx.fillStyle = '#161c2b';
+  ctx.beginPath(); ctx.arc(ox,oy,2.5,0,Math.PI*2); ctx.fill();
+}
+function drawPCA(M, frame) {
+  const d = M.data; if (!d) return;
+  const cv = document.getElementById(M.pca), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, m = 36;
+  ctx.clearRect(0,0,W,H);
+  M.pv = pcaView(M);
+  const PV = M.pv;
+  let sx, sy;
+  if (MODE === '3D') {
+    const k = (Math.min(W,H)-2*m) / (2*PV.half);
+    sx = p => W/2 + isoPCA(M,p)[0]*k;
+    sy = p => H/2 + isoPCA(M,p)[1]*k;
+  } else {
+    const lx = v => m + (v-(PV.cx-PV.half))/(2*PV.half)*(W-2*m);
+    const ly = v => H-m - (v-(PV.cy-PV.half))/(2*PV.half)*(H-2*m);
+    sx = p => lx(p[0]); sy = p => ly(p[1]);
+  }
+  if (MODE === '3D') {
+    ctx.fillStyle = '#9aa4b2'; ctx.font = '10px ui-monospace';
+    ctx.fillText('PCA(3) · drag to orbit', m, m*0.4+10);
+  }
+  for (let ci = 0; ci < d.classes.length; ci++) {
+    if (ci === CLS) continue;
+    const P = classPts(M, d.classes[ci]);
+    ctx.fillStyle = 'rgba(93,107,126,0.16)';
+    for (const p of P) { ctx.beginPath(); ctx.arc(sx(p),sy(p),2.0,0,Math.PI*2); ctx.fill(); }
+  }
+  const act = d.classes[CLS], A = classPts(M, act);
+  ctx.strokeStyle = 'rgba(232,99,42,0.5)'; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  A.forEach((p,i)=>{ const px=sx(p),py=sy(p); i?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+  ctx.closePath(); ctx.stroke();
+  A.forEach(p=>{ ctx.fillStyle='rgba(232,99,42,0.45)';
+    ctx.beginPath(); ctx.arc(sx(p),sy(p),2.2,0,Math.PI*2); ctx.fill(); });
+  const cur = A[frame];
+  ctx.fillStyle = '#e8632a';
+  ctx.beginPath(); ctx.arc(sx(cur),sy(cur),5.5,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(232,99,42,0.3)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(sx(cur),sy(cur),11,0,Math.PI*2); ctx.stroke();
+  drawPCAFrame(M, ctx, sx, sy);
+  ctx.fillStyle = '#161c2b'; ctx.font = '600 11px ui-monospace';
+  ctx.fillText(act.class_name, m, m*0.7);
+}
+
+function updateVarStat(M) {
+  const d = M.data;
+  const v = (MODE === '3D' && d && d.pca_var_explained3 != null)
+    ? d.pca_var_explained3 : (d ? d.pca_var_explained : null);
+  document.getElementById(M.varEl).textContent = v != null ? (v*100).toFixed(0)+'%' : '\u2014';
+}
+function renderModel(M, frame) {
+  const d = M.data; if (!d) return;
+  drawPCA(M, frame);
+  const cos = d.classes[CLS].cos_to_first[frame];
+  document.getElementById(M.cosEl).textContent = cos.toFixed(3);
+  document.getElementById(M.driftEl).textContent = ((1-cos)*100).toFixed(2)+'%';
+  document.getElementById(M.dimEl).textContent = d.embedding_dim != null ? d.embedding_dim : '\u2014';
+  updateVarStat(M);
+}
+
+const slider = document.getElementById('slider');
+const angVal = document.getElementById('angVal');
+function render(frame) {
+  const ref = refData(); if (!ref) return;
+  if (frame > ref.n_frames - 1) frame = ref.n_frames - 1;
+  drawCloud(frame);
+  renderModel(MODELS.A, frame);
+  renderModel(MODELS.B, frame);
+  angVal.textContent = Math.round(ref.angles_deg[frame]) + '\u00b0';
+}
+function buildChips() {
+  const ref = refData(); const bar = document.getElementById('classbar');
+  bar.innerHTML = ''; if (!ref) return;
+  ref.classes.forEach((c,i) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (i===CLS?' active':'');
+    b.textContent = c.class_name;
+    b.onclick = () => { CLS = i; buildChips();
+      document.getElementById('clsName').textContent = c.class_name;
+      render(+slider.value); };
+    bar.appendChild(b);
+  });
+}
+function afterLoad() {
+  const ref = refData(); if (!ref) return;
+  slider.max = ref.n_frames - 1;
+  if (+slider.value > ref.n_frames - 1) slider.value = 0;
+  if (CLS > ref.classes.length - 1) CLS = 0;
+  document.getElementById('clsName').textContent = ref.classes[CLS].class_name;
+  buildChips(); render(+slider.value);
+}
+function loadInto(M, d, filename) {
+  M.data = d;
+  document.getElementById(M.loadedEl).textContent = filename + ' · ' + d.classes.length + ' classes';
+  afterLoad();
+}
+
+slider.addEventListener('input', () => render(+slider.value));
+const zoom = document.getElementById('zoom');
+zoom.addEventListener('input', () => {
+  ZOOM = +zoom.value;
+  document.getElementById('zoomVal').textContent = ZOOM.toFixed(1)+'\u00d7';
+  render(+slider.value);
+});
+let spinning=false, raf=null;
+const spinBtn = document.getElementById('spinBtn');
+function spinStep() {
+  if (!spinning) return;
+  const ref = refData(); if (!ref) return;
+  let f = (+slider.value + 1) % ref.n_frames;
+  slider.value = f; render(f);
+  raf = setTimeout(()=>requestAnimationFrame(spinStep), 65);
+}
+function setSpin(on) {
+  if (!refData()) return;
+  spinning = on;
+  spinBtn.classList.toggle('on', spinning);
+  spinBtn.textContent = spinning ? '\u275a\u275a stop' : '\u25b6\ufe0e spin';
+  if (spinning) spinStep(); else clearTimeout(raf);
+}
+spinBtn.addEventListener('click', () => setSpin(!spinning));
+const modeBtn = document.getElementById('modeBtn');
+modeBtn.addEventListener('click', () => {
+  if (!refData()) return;
+  MODE = MODE === '2D' ? '3D' : '2D';
+  modeBtn.textContent = MODE === '2D' ? '\u2b17\ufe0e 3D' : '\u2b17\ufe0e 2D';
+  modeBtn.classList.toggle('on', MODE === '3D');
+  const lbl = MODE === '3D' ? 'PCA(3)' : 'PCA(2)';
+  document.getElementById('pcaLabelA').textContent = lbl;
+  document.getElementById('pcaLabelB').textContent = lbl;
+  const cur = MODE === '3D' ? 'grab' : 'default';
+  document.getElementById('pcaA').style.cursor = cur;
+  document.getElementById('pcaB').style.cursor = cur;
+  render(+slider.value);
+});
+const refreshBtn = document.getElementById('refreshBtn');
+refreshBtn.addEventListener('click', () => {
+  const ref = refData(); if (!ref) return;
+  CLS = Math.floor(Math.random()*ref.classes.length);
+  buildChips();
+  document.getElementById('clsName').textContent = ref.classes[CLS].class_name;
+  render(+slider.value);
+  // momentary action: brief lit flash, then release
+  refreshBtn.classList.add('on');
+  setTimeout(() => refreshBtn.classList.remove('on'), 150);
+});
+
+function wireOrbit(M) {
+  const cv = document.getElementById(M.pca);
+  let dragging=false, lastX=0, lastY=0;
+  cv.style.touchAction = 'none';
+  cv.addEventListener('pointerdown', (e) => {
+    if (MODE !== '3D' || !M.data) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    cv.style.cursor = 'grabbing';
+    cv.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX-lastX, dy = e.clientY-lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    M.yaw += dx * 0.012; M.pitch += dy * 0.012;
+    const lim = Math.PI/2 - 0.05;
+    M.pitch = Math.max(-lim, Math.min(lim, M.pitch));
+    render(+slider.value || 0); e.preventDefault();
+  });
+  function endDrag(e){
+    if (!dragging) return;
+    dragging = false;
+    cv.style.cursor = MODE === '3D' ? 'grab' : 'default';
+    if (e && e.pointerId != null && cv.hasPointerCapture(e.pointerId))
+      cv.releasePointerCapture(e.pointerId);
+  }
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', endDrag);
+  cv.addEventListener('pointerleave', endDrag);
+}
+wireOrbit(MODELS.A); wireOrbit(MODELS.B);
+
+function hookFile(inputId, M, label) {
+  const el = document.getElementById(inputId);
+  if (!el) return; // manual loader UI is commented out; auto-load handles it
+  el.addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => { try {
+        loadInto(M, JSON.parse(r.result), file.name);
+        dataNote.textContent = 'Loaded ' + label + ': ' + file.name;
+      } catch(err){ alert('Could not parse JSON: '+err.message); } };
+    r.readAsText(file);
+  });
+}
+hookFile('fileA', MODELS.A, 'JEPA');
+hookFile('fileB', MODELS.B, 'PointNet');
+
+function showEmpty(msg) {
+  cctx.clearRect(0,0,cloud.width,cloud.height);
+  for (const id of ['pcaA','pcaB']) {
+    const c = document.getElementById(id);
+    c.getContext('2d').clearRect(0,0,c.width,c.height);
+  }
+  document.getElementById('classbar').innerHTML = '';
+  dataNote.textContent = msg;
+}
+async function tryFetch(url, M) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    loadInto(M, await res.json(), url);
+    return true;
+  } catch (err) { return false; }
+}
+async function boot() {
+  showEmpty('Loading rotation_demo.json and rotation_demo_classical.json\u2026');
+  const okA = await tryFetch('rotation_demo.json', MODELS.A);
+  const okB = await tryFetch('rotation_demo_classical.json', MODELS.B);
+  if (okA || okB) {
+    dataNote.textContent =
+      'Precomputed point-cloud embeddings (Hack the Worlds 2026). ' +
+      'Same object feeds both encoders; only the embedding views differ. ' +
+      (okA?'':'JEPA file missing \u2014 load manually. ') +
+      (okB?'':'PointNet file missing \u2014 load manually. ') +
+      'Center frames mark the origin of the object and each embedding space.';
+    setSpin(true); // start in auto-spin mode
+  } else {
+    showEmpty('No JSON auto-loaded. Serve this page over http(s) so ' +
+      'rotation_demo.json (JEPA) and rotation_demo_classical.json (classical) can be fetched.');
+  }
+}
+boot();
+</script>
+</body>
+</html>
